@@ -1,0 +1,45 @@
+From be9349a312b115c8daa749b33354718d3fd07aec Mon Sep 17 00:00:00 2001
+From: Denis Benato <benato.denis96@gmail.com>
+Date: Sun, 19 Oct 2025 13:49:31 +0200
+Subject: [PATCH] more verbose start
+
+---
+ drivers/platform/x86/asus-wmi.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
+index e72a2b5d158e..34dc2b75e8e7 100644
+--- a/drivers/platform/x86/asus-wmi.c
++++ b/drivers/platform/x86/asus-wmi.c
+@@ -5103,6 +5103,8 @@ int __init_or_module asus_wmi_register_driver(struct asus_wmi_driver *driver)
+ 	struct platform_driver *platform_driver;
+ 	struct platform_device *platform_device;
+ 
++	pr_warn("asus_wmi_register_driver started for %s\n", driver->name);
++
+ 	guard(mutex)(&register_mutex);
+ 	if (used)
+ 		return -EBUSY;
+@@ -5112,12 +5114,17 @@ int __init_or_module asus_wmi_register_driver(struct asus_wmi_driver *driver)
+ 	platform_driver->driver.owner = driver->owner;
+ 	platform_driver->driver.name = driver->name;
+ 	platform_driver->driver.pm = &asus_pm_ops;
+-
++	pr_warn("asus_wmi_register_driver platform_create_bundle started...");
+ 	platform_device = platform_create_bundle(platform_driver,
+ 						 asus_wmi_probe,
+ 						 NULL, 0, NULL, 0);
+-	if (IS_ERR(platform_device))
++	pr_warn("asus_wmi_register_driver platform_create_bundle done.");
++	if (IS_ERR(platform_device)) {
++		pr_err("asus_wmi_register_driver failed with %p\n", platform_device);
+ 		return PTR_ERR(platform_device);
++	}
++
++	pr_warn("asus_wmi_register_driver started OK");
+ 
+ 	used = true;
+ 	return 0;
+-- 
+2.51.0
+
