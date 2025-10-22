@@ -71,7 +71,7 @@ ccache -C
 To initialize the linux kernel sources and start the bisect you use the script initialize.sh
 
 ```sh
-./initialioze.sh
+./initialize.sh
 ```
 
 After this git will await for a known good and known bad commit, so assume you know 6.11.4 works and 6.11.5 does not,
@@ -82,6 +82,7 @@ Head over the linux directory and checkout the known broken version:
 
 ```sh
 cd linux
+# replace v6.11.5 with whatever is the known broken version
 git checkout v6.11.5
 ```
 
@@ -151,7 +152,7 @@ this is an example of a major screwup! *just for reference, every reference is p
 Common reasons for screwing up are:
 1) you booted your normal kernel instead of linux-bisector, because the bootloader is not properly configured and you can only find good or bad commits.
 2) you booted your normal kernel because you forgot to spam arrow down during boot.
-3) you write bad instead of good or the other way around
+3) you wrote bad instead of good or the other way around
 
 To prevent 1 and 2 each time you boot do
 
