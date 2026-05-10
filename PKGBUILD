@@ -66,7 +66,13 @@ prepare() {
   cd "linux"
 
   echo "Setting version..."
-  echo "${pkgbase#linux}" > localversion.10-pkgname
+  local _commit
+  if [[ -s .bisector_commit ]]; then
+    _commit="-g$(<.bisector_commit)"
+  else
+    _commit=""
+  fi
+  echo "${pkgbase#linux}${_commit}" > localversion.10-pkgname
   echo "-$pkgrel" > localversion.20-pkgrel
   LLVM=1 LLVM_IAS=1 make defconfig
   LLVM=1 LLVM_IAS=1 make -s kernelrelease > version
