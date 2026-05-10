@@ -3,3 +3,4 @@
 /pkg/**
 /linux/**
 built_commits.txt
+.expected_commit
