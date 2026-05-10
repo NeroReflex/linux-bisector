@@ -95,12 +95,22 @@ Then proceed compiling the kernel:
 Once that is done you can install the compiled version doing
 
 ```sh
-sudo pacman -U *.tar.zst
+./install.sh
 ```
+
+This installs the package and records the bisected commit in `.expected_commit` so you can verify after reboot that the right kernel actually booted (see Suggestions below).
 
 If you are using ChimeraOS you can reboot and spam arrow down or arrow up and select the entry with (linux-bisector).
 
-Once boot is completed check if the bug is in there, if it is you can do:
+Once boot is completed, **first confirm you actually booted into the kernel you just built**:
+
+```sh
+./install.sh verify
+```
+
+This compares the running `uname -r` against `.expected_commit` (written by `./install.sh` at install time) and exits non-zero if they don't match — i.e. if you booted your normal kernel by accident, or the bootloader entry is stale. Do NOT skip this; marking `git bisect good`/`bad` against the wrong running kernel poisons the entire bisect.
+
+Once verify says OK, check if the bug is in there. If it is:
 
 ```sh
 cd linux
@@ -114,10 +124,10 @@ cd linux
 git checkout v6.11.4
 cd ..
 ./build.sh
-sudo pacman -U *.tar.zst
+./install.sh
 ```
 
-And reboot again into linux-bisector. If the bug is not there you can start your git bisect marking the first good commit:
+Reboot again into linux-bisector, run `./install.sh verify` again, and if the bug is not there you can start your git bisect marking the first good commit:
 
 ```sh
 cd linux
@@ -131,12 +141,14 @@ Repeat this step as many times as needed:
 
 ```sh
 cd linux
-git bisect (good|bad) # good or bad depends if on the current reboot of linux-bisector you could reproduce the bug or not
+git bisect (good|bad)  # good or bad depends if on the current reboot of linux-bisector you could reproduce the bug or not
 # git has moved to a new commit
 cd ..
-./build.sh # build that new commit
-sudo pacman -U *.tar.zst # install the newly compiled kernel
-reboot # and remember to pick linux-bisector
+./build.sh             # build that new commit
+./install.sh           # install the newly compiled kernel
+reboot                 # and remember to pick linux-bisector
+# after reboot:
+./install.sh verify    # confirm uname -r matches .expected_commit before marking good/bad
 ```
 
 At the end git will tell you the first commit that has caused the bug you are attempting to have fixed.
@@ -154,16 +166,10 @@ Common reasons for screwing up are:
 2) you booted your normal kernel because you forgot to spam arrow down during boot.
 3) you wrote bad instead of good or the other way around
 
-To prevent 1 and 2 each time you boot do
+Problems 1 and 2 are exactly what the `./install.sh verify` step in the bisect loop above is for. Mechanically:
 
-```sh
-uname -a
-```
+- `build.sh` writes the short SHA of the currently checked-out commit into `linux/.bisector_commit`. The PKGBUILD reads this and bakes it into the kernel's localversion, so the resulting `uname -r` ends with `-g<sha>-1` (e.g. `6.19.0-bisector-g89b831ebdaca-1`). Every bisect step produces a uniquely-named kernel.
+- `./install.sh` runs `pacman -U` on the freshly built `*.pkg.tar.zst` and copies `linux/.bisector_commit` to `.expected_commit` at the repo root, so it persists across reboots.
+- After reboot, `./install.sh verify` reads `.expected_commit`, reads the running `uname -r`, and exits non-zero unless `uname -r` contains `-g<expected>-`. Use it as a hard gate: if verify fails, **do not** run `git bisect good`/`bad` — fix the bootloader / re-pick the linux-bisector entry / rebuild, then verify again.
 
-and save the result in a new line of file steps.txt. After verifying if the commit is good or bad do:
-
-```sh
-git log -1 --pretty=format:"%H"
-```
-
-append this to the steps.txt file and write after the commit if it was good or bad.
+`build.sh` also appends every built commit's full SHA to `built_commits.txt`, giving you a running log of what was actually compiled across the bisect — useful if you ever lose track of which step you're on, or want to retroactively check whether a step really got rebuilt.

@@ -59,14 +59,25 @@ export MAKEFLAGS="-j$(nproc)"
 
 _make() {
   test -s version
-  LLVM=1 LLVM_IAS=1 KBUILD_BUILD_TIMESTAMP="" make CC="$CC" KERNELRELEASE="$(<version)" "$@"
+  LLVM=1 LLVM_IAS=1 WERROR=0 KBUILD_BUILD_TIMESTAMP="" make CC="$CC" KERNELRELEASE="$(<version)" "$@"
 }
 
 prepare() {
   cd "linux"
 
+  # glibc 2.42 made strstr/strchr const-correct; older libbpf assigns the
+  # result to char * and trips -Werror under clang. Drop libbpf's hardcoded
+  # -Werror so every bisect step builds without manual patching.
+  sed -i 's/ -Werror -Wall/ -Wall/' tools/lib/bpf/Makefile
+
   echo "Setting version..."
-  echo "${pkgbase#linux}" > localversion.10-pkgname
+  local _commit
+  if [[ -s .bisector_commit ]]; then
+    _commit="-g$(<.bisector_commit)"
+  else
+    _commit=""
+  fi
+  echo "${pkgbase#linux}${_commit}" > localversion.10-pkgname
   echo "-$pkgrel" > localversion.20-pkgrel
   LLVM=1 LLVM_IAS=1 make defconfig
   LLVM=1 LLVM_IAS=1 make -s kernelrelease > version
